@@ -1,0 +1,94 @@
+
+.labelOverlay
+{
+    position:absolute;
+    width: 400px;
+    padding:8px;
+    background: rgba(50,50,50,0.2);
+    font-weight:bold;
+    color:white;
+    z-index:2;
+}
+.paramSlider
+{
+    margin: 0 8px;
+}
+
+.x3dom-state-alter {
+    position: absolute;
+    margin: 2px;
+    padding: 5px;
+    bottom: 10%;
+    right: 10px;
+    background: rgba(50,50,50,0.0);
+    z-index: 1000;
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    color: #C8C8C8;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: help;
+}
+
+.x3dom-state-alter-route {
+    position: fixed;
+    height: 10%;
+    width: 100%;
+    margin: 8px;
+    padding: 5px;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(50,50,50,0.0);
+    z-index: 1001;
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    color: #C8C8C8;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: help;
+}
+
+.dataWindow {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    background-color: #f1f1f1;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+    text-align:center;
+}
+
+.dataWindow a {
+    padding: 8px 8px 8px 32px;
+    text-decoration: none;
+    font-size: 25px;
+    color: #818181;
+    display: block;
+    transition: 0.3s;
+
+}
+
+.dataWindow a:hover{
+    color: #1b1d21;
+}
+
+.dataWindow .closebtn {
+    position: absolute;
+    top: 0;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
+}
+
+.hidden{
+    visibility:hidden;
+}
+
+@media screen and (max-height: 450px) {
+    .dataWindow {padding-top: 15px;}
+    .dataWindow a {font-size: 18px;}
+}

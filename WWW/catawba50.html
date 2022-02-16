@@ -1,0 +1,584 @@
+
+<html >
+
+<head>
+  <title></title>
+  <link rel="stylesheet" type="text/css" href="https://x3dom.org/download/dev/x3dom.css" />
+  <script type="text/javascript" src="https://x3dom.org/download/dev/x3dom-full.debug.js"></script>
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta http-equiv='Content-Type' content='text/html;charset=utf-8'/>
+  <meta http-equiv="X-UA-Compatible" content="chrome=1,IE=edge" />
+  <title>Custom Shaders in X3DOM</title>
+  <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'/>
+
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.css">
+  <script src="//code.jquery.com/jquery-1.10.2.min.js"></script>
+  <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js"></script>
+
+  <style>
+    .labelOverlay
+    {
+      position:fixed;
+      width: 400px;
+      padding:8px;
+      background: rgba(50,50,50,0.2);
+      font-weight:bold;
+      color:white;
+      z-index:2;
+    }
+    .x3domContext
+    {
+      border: none;
+      background:#888888;
+      background: linear-gradient(#777777, #333333);
+    }
+    .paramSlider
+    {
+      margin: 0 8px;
+    }
+
+    .x3dom-state-alter {
+      position: absolute;
+      margin: 2px;
+      padding: 5px;
+      bottom: 10%;
+      right: 10px;
+      background: rgba(50,50,50,0.0);
+      z-index: 1000;
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      color: #C8C8C8;
+      font-weight: bold;
+      text-transform: uppercase;
+      cursor: help;
+    }
+
+    .x3dom-state-alter-route {
+      position: fixed;
+      height: 10%;
+      width: 100%;
+      margin: 8px;
+      padding: 5px;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(50,50,50,0.0);
+      z-index: 1001;
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      color: #C8C8C8;
+      font-weight: bold;
+      text-transform: uppercase;
+      cursor: help;
+    }
+
+    .dataWindow {
+      height: 100%;
+      width: 0;
+      position: fixed;
+      z-index: 9999;
+      top: 0;
+      left: 0;
+      background-color: #f1f1f1;
+      overflow-x: hidden;
+      transition: 0.5s;
+      padding-top: 60px;
+      text-align:center;
+    }
+
+    .dataWindow a {
+      padding: 8px 8px 8px 32px;
+      text-decoration: none;
+      font-size: 25px;
+      color: #818181;
+      display: block;
+      transition: 0.3s;
+
+    }
+
+    .dataWindow a:hover{
+      color: #1b1d21;
+    }
+
+    .dataWindow .closebtn {
+      position: absolute;
+      top: 0;
+      right: 25px;
+      font-size: 36px;
+      margin-left: 50px;
+    }
+
+    @media screen and (max-height: 450px) {
+      .dataWindow {padding-top: 15px;}
+      .dataWindow a {font-size: 18px;}
+    }
+  </style>
+  <script src="PointPropertiesParameter.js"></script>
+  <script>
+    // travel events
+    let text;
+    document.onload = function() {
+        const time = document.getElementById("time");
+        const x3dElement = document.getElementById('x3dElement');
+        const runtime = x3dElement.runtime;
+        const fpsDiv = document.getElementById('fps');
+        const drawcalls = document.getElementById('dc');
+        const timestamps = document.getElementById('ts');
+        const travelb = document.getElementById("travelButton");
+        // save fps array
+        let fpsList = [];
+
+        // to be executed
+        function endTravel() {
+            // modify travelTrigger button
+            travelb.value = "0";
+            travelb.innerHTML = 'Start Travel';
+            // end route
+            time.setAttribute("enabled", "false");
+            let seconds = new Date().getTime() / 1000.0;
+            console.log(seconds);
+            time.setAttribute('stopTime', seconds.toString());
+            // mark view might already been changed and need to be reset before the next route
+            flagResetView = "true";
+            // reset fps
+            runtime.exitFrame = function () {
+                fpsDiv.innerHTML = "0.0";
+                drawcalls.innerHTML = "0.0";
+                timestamps.innerHTML = "0.0";
+            }
+            // record and display fps array
+            console.log(fpsList);
+            const minps = document.getElementById("minPointFieldLabel").innerHTML;
+            const maxps = document.getElementById("maxPointFieldLabel").innerHTML;
+            const sps = document.getElementById("scaleFieldLabel").innerHTML;
+            const aps = document.getElementById("attAFieldLabel").innerHTML;
+            const bps = document.getElementById("attBFieldLabel").innerHTML;
+            const cps = document.getElementById("attCFieldLabel").innerHTML;
+            text = document.getElementById("dataText").innerHTML+"<br>"+
+                "min_point_size="+minps+"<br>max_point_size="+maxps+"<br>scale="+sps+
+                "<br>a="+aps+"<br>b="+bps+"<br>c="+cps+"<br>"+fpsList.join("<br>");
+
+            document.getElementById("dataText").innerHTML = text;
+
+        }
+
+        function startTravel() {
+          console.log("start");
+          // reset fpslist
+          fpsList = [];
+
+          // set time sensor attribute
+          time.setAttribute("enabled", "true");
+          let seconds = new Date().getTime() / 1000.0;
+          console.log(seconds);
+          time.setAttribute('startTime', seconds.toString());
+          // set button attribute
+          travelb.innerHTML = 'End Travel';
+          travelb.value = "1";
+          // console.log(travelb.value);
+
+          // get fps
+          runtime.exitFrame = function () {
+            fpsDiv.innerHTML = runtime.fps.toFixed(2);
+            drawcalls.innerHTML = runtime.states.infos['#DRAWS:'].toFixed(2);
+            timestamps.innerHTML = time.getAttribute("elapsedTime").toFixed(2);
+
+            // end travel if route is finished
+            if (travelb.value == "1" &&
+                    time.getAttribute("elapsedTime") - time.getAttribute("cycleInterval") >= -0.05) {
+              console.log("end2");
+              endTravel();
+            }
+          }
+        }
+
+        function resetView() {
+          // reset viewpoint to init
+          document.getElementById("vp0Trans").setAttribute("translation", "0 0 0");
+          document.getElementById("vp0Trans").setAttribute("rotation", "0 0 0");
+          document.getElementById("vp0").setAttribute("position", "387.5 357.91 20.45");
+          document.getElementById("vp0").setAttribute("orientation", "0.36959 0.57356 0.73105 2.35696");
+
+        }
+
+        $("#travelButton").click(function() {
+            // process travel
+            console.log(trans, rot);
+            if (this.value == "0") {
+              resetView();
+              startTravel();
+            }
+            else {
+                console.log("end");
+                endTravel();
+            }
+        });
+
+        // record fps every second
+        setInterval(function () {
+            if (travelb.value == "1") {
+                // print timestamp and fps to console
+                fpsList.push(time.getAttribute("elapsedTime") + ", " + fpsDiv.innerHTML);
+                // console.log(time.getAttribute("elapsedTime") - time.getAttribute("cycleInterval"));
+            }
+            // const vp0Trans = document.getElementById("vp0Trans");
+            // const vp0 = document.getElementById("vp0");
+            // console.log(vp0.getAttribute("position"), vp0.getAttribute("orientation"));
+        }, 1000);
+
+        // save to file
+        $("#saveButton").click(function () {
+            let fso;
+            try {
+                fso=new ActiveXObject("Scripting.FileSystemObject");
+            } catch (e) {
+                alert("not supported by browser");
+                return;
+            }
+            let f1 = fso.createtextfile("\\1.txt",true);
+            f1.write(text.replace("<br>","\n"));
+
+        });
+
+        // user defined route
+        let routeArr = [];
+        const duration = document.getElementById("duration");
+        const trans = document.getElementById("trans");
+        const rot = document.getElementById("rotate");
+        const vpPos = document.getElementById("vp0").getAttribute("position").split(' ');
+        const vpOrient = document.getElementById("vp0").getAttribute("orientation").split(' ');
+        // TODO: ray can be used for picking
+        let line = runtime.getViewingRay(runtime.getWidth()/2, runtime.getHeight()/2);
+
+        $("#setKeyPointButton").click(function () {
+            let viewpoint = runtime.viewpoint();
+            let mat_view = runtime.viewMatrix().inverse();
+            let rotation = new x3dom.fields.Quaternion(0, 0, 1, 0);
+            rotation.setValue(mat_view);
+            let vpRot = rotation;//.toAxisAngle();
+            let vpTrans = mat_view.e3();
+            // let vpCenter = viewpoint.getCenterOfRotation();
+            console.log(mat_view);
+
+            let timestamp = document.getElementById("timestamp").value;
+            let vpPosVec = new x3dom.fields.SFVec3f(parseFloat(vpPos[0]),
+                    parseFloat(vpPos[1]), parseFloat(vpPos[2]));
+            let vpOrientVec = new x3dom.fields.Quaternion(parseFloat(vpOrient[0]),
+                    parseFloat(vpOrient[1]), parseFloat(vpOrient[2]), parseFloat(vpOrient[3]));
+            let vpTrans1 = vpTrans.subtract(vpPosVec);
+            let vpRot1 = vpRot.multiply(vpOrientVec);
+
+
+            // TODO: duplicate timestamp, add/delete record to/from table
+            routeArr.push({"timestamp": timestamp, "trans": vpTrans1, "rot": vpRot1});
+            console.log(vpTrans,vpTrans1, vpRot, vpRot1);
+
+        });
+
+        $("#finishSetRouteButton").click(function () {
+            console.log(duration.value, routeArr);
+            let routeKey = "";
+            let routeKeyValueTrans = "";
+            let routeKeyValueRot = "";
+            // TODO: timestamp > 1
+            routeArr.sort(function(a, b) {
+              return a["timestamp"] - b["timestamp"];
+            });
+            for(let step in routeArr) {
+              routeKey += "  "+routeArr[step]["timestamp"];
+              routeKeyValueTrans += "  "+routeArr[step]["trans"];
+              routeKeyValueRot += "  "+routeArr[step]["rot"];
+              console.log(step, routeKey, routeKeyValueTrans, routeKeyValueRot);
+            }
+
+            console.log(routeKey, routeKeyValueTrans, routeKeyValueRot);
+            time.setAttribute("cycleInterval", duration.value);
+            trans.setAttribute("key", routeKey);
+            trans.setAttribute("keyValue", routeKeyValueTrans);
+            rot.setAttribute("keyValue", routeKeyValueRot);
+
+            routeArr = [];
+        });
+
+
+    }
+
+    // sliding window for fps data display
+    function openNav(id) {
+      document.getElementById(id).style.width = "100%";
+    }
+
+    function closeNav(id) {
+      document.getElementById(id).style.width = "0";
+    }
+
+    //Round a float value to x.xx format
+    function roundWithTwoDecimals(value) {
+      return (Math.round(value * 100)) / 100;
+    }
+
+    //Handle click on any group member
+    function handleGroupClick(event) {
+      //Mark hitting point
+      $('#marker').attr('translation', event.hitPnt);
+      console.log(event);
+
+      //Display coordinates of hitting point (rounded)
+      var coordinates = event.hitPnt;
+      $('#coordX').html(roundWithTwoDecimals(coordinates[0]));
+      $('#coordY').html(roundWithTwoDecimals(coordinates[1]));
+      $('#coordZ').html(roundWithTwoDecimals(coordinates[2]));
+    }
+
+    //Handle click on a shape
+    function handleSingleClick(shape) {
+      $('#lastClickedObject').html($(shape).attr("def"));
+
+    }
+
+    $(document).ready(function(){
+      //Add a onclick callback to every shape
+      $("shape").each(function() {
+        $(this).attr("onclick", "handleSingleClick(this)");
+      });
+    });
+
+
+
+  </script>
+</head>
+
+<body>
+
+<div style="height: 100%;width: 100%">
+  <!-- data window -->
+  <div id="dataWindow" class="dataWindow">
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav('dataWindow')">&times;</a>
+<!--    <button type='button' id="saveButton" value="0">Save</button>-->
+    <div id="dataText"
+         style="height:50%;width:90%;overflow:auto;position: absolute;bottom:30px;left: 5%;color: #1b1d21;text-align:left">
+    </div>
+  </div>
+  <!-- point properties control panel -->
+  <div class="labelOverlay">
+    <h2>Custom Shader in X3DOM</h2>
+
+    This shader intends to implement <a href="http://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4-WD1/Part01/components/shape.html#PointProperties">"PointProperties"</a> shader in X3DOM.
+    The parameters include "point size scale factor" (default size without attenuation), "min point size",
+    "max point size", and "attenuation A, B, and C". If the distance from viewpoint to the point is d,
+    the actual point size is calculated by 1/(attA+attB*d+attC*d*d) and then clipped by "min point size" and
+    "max point size".
+    <h3>Point Property Parameters:</h3>
+    <p>
+      min point size: <span id="minPointFieldLabel">1.0</span>
+    <div class="paramSlider" id="sliderMin"></div>
+    </p>
+    <p>
+      max point size: <span id="maxPointFieldLabel">20.0</span>
+    <div class="paramSlider" id="sliderMax"></div>
+    </p>
+    <p>
+      scale point size: <span id="scaleFieldLabel">10.0</span>
+    <div class="paramSlider" id="sliderScale"></div>
+    </p>
+    <p>
+      Attenuation A: <span id="attAFieldLabel">1.0</span>
+    <div class="paramSlider" id="sliderAttA"></div>
+    </p>
+    <p>
+      Attenuation B: <span id="attBFieldLabel">0.0</span>
+    <div class="paramSlider" id="sliderAttB"></div>
+    </p>
+    <p>
+      Attenuation C: <span id="attCFieldLabel">0.0</span>
+    <div class="paramSlider" id="sliderAttC"></div>
+    </p>
+  </div>
+  <!-- route and picking state table -->
+  <div class="x3dom-state-alter">
+    <button type='button' id="travelButton" value="0">Start Travel</button>
+<!--    <button type='button' id="routeButton" value="0" onclick="openNav('routePanel')">Define Route</button>-->
+    <!-- open data window -->
+    <button id="showRecordButton" onclick="openNav('dataWindow')" type='button' value="0">Show Record</button>
+    <br>
+    <h4>FPS: <div id="fps">0.0</div></h4>
+    <h4>Drawcalls: <div id="dc">0.0</div></h4>
+    <h4>TimeStamps: <div id="ts">0.0</div></h4>
+    <h4>Last clicked object:</h4>
+    <span id="lastClickedObject">-</span>
+    <h4>Click coordinates:</h4>
+      <br>
+    <table class="x3dom-state-alter">
+      <tr><td>X: </td><td id="coordX">-</td></tr>
+      <tr><td>Y: </td><td id="coordY">-</td></tr>
+      <tr><td>Z: </td><td id="coordZ">-</td></tr>
+    </table>
+  </div>
+  <!-- route defining panel -->
+  <div class="x3dom-state-alter-route" id="routePanel">
+    <table class="x3dom-state-alter-route" style="width: 400px">
+      <tr>
+        <td>Current tick: <input id="timestamp" type="text" name="Timestamp" value="0"></td>
+        <td><button type="button" id="setKeyPointButton" value="">Set Key Point</button></td>
+      </tr>
+      <tr>
+        <td>Duration: <input id="duration" type="text" name="Duration" value="0"></td>
+        <td><button type="button" id="finishSetRouteButton" value="">Finish</button></td>
+      </tr>
+    </table>
+  </div>
+  <!-- x3d scene -->
+  <x3d id="x3dElement" xmlns="http://www.web3d.org/specifications/x3d-namespace" showStat="true" showLog="false"
+       x="0px" y="0px"
+       width="100%" height="100%">
+    <Scene id="x3dScene">
+        <transform DEF="vp0Trans" id="vp0Trans">
+          <Viewpoint DEF="vp0" id='vp0' position="387.5 357.91 20.45"
+                     orientation="0.36959 0.57356 0.73105 2.35696" description="perspective"></Viewpoint>
+        </transform>
+
+<!--        <Viewpoint DEF="vp1" id='vp1' position="387.5 357.91 20.45"-->
+<!--                   orientation="0.36959 0.57356 0.73105 2.35696" description="perspective"></Viewpoint>-->
+
+        <navigationInfo headlight='false'></navigationInfo>
+        <Background skyColor='0.4 0.4 0.4'></Background>
+        <SpotLight DEF="spot" id='spot' on ="TRUE" beamWidth='0.9' color='1 1 1' cutOffAngle='0.78' location='250 350 360' radius='800' >  </SpotLight>
+
+        <Group onclick="handleGroupClick(event)" DEF="group">
+          <transform DEF="travel" id='travel'>
+            <Shape DEF="PointCloudShape">
+              <Appearance>
+                <imagetexture url="circle_texture.png"></imagetexture>
+                <ComposedShader>
+                  <field name="tex" type="SFInt32" value="0"></field>
+
+                  <field id="minPointField" name='minPoint' type='SFFloat' value='1.0'></field>
+                  <field id="maxPointField"  name='maxPoint'  type='SFFloat' value='20.0'></field>
+                  <field id="scaleField" name='scale' type='SFFloat' value='10.0'></field>
+                  <field id="attAField" name='attA' type='SFFloat' value='1.0'></field>
+                  <field id="attBField" name='attB' type='SFFloat' value='0.0'></field>
+                  <field id="attCField" name='attC' type='SFFloat' value='0.0'></field>
+                  <field id="colField" name="col" type="SFString" value="Color"></field>
+                  <ShaderPart type='VERTEX' style="display:none;">
+                    attribute vec4 position;
+                    attribute vec3 normal;
+                    attribute vec3 color;
+
+                    uniform mat4 modelViewMatrix;
+                    uniform mat4 modelViewMatrixInverse;
+                    uniform mat4 modelViewProjectionMatrix;
+                    uniform mat4 normalMatrix;
+                    uniform vec3 bgSize;
+                    uniform vec3 bgCenter;
+                    uniform float bgPrecisionMax;
+                    uniform float bgPrecisionColMax;
+
+                    //application parameters
+                    uniform float minPoint;
+                    uniform float maxPoint;
+                    uniform float scale;
+                    uniform float attA;
+                    uniform float attB;
+                    uniform float attC;
+
+                    varying vec3 col;
+                    varying vec3 fragNormal;
+
+                    void main()
+                    {
+                    vec3 vertPosition = position.xyz;
+                    vertPosition = bgCenter + bgSize * vertPosition / bgPrecisionMax;
+
+                    gl_Position = modelViewProjectionMatrix * vec4(vertPosition, 1.0);
+                    fragNormal = (normalMatrix * vec4(normal, 0.0)).xyz;
+
+                    float ndc = gl_Position.z;  // NDC in [-1, 1] (by perspective divide)
+                    float depth = (ndc+1.0) * 0.5;             // depth in [0, 1]
+                    gl_PointSize = min(maxPoint, max( scale*1.0 / (attA+attB*depth+attC*depth*depth), minPoint));
+
+                    col = color / bgPrecisionColMax;
+                    }
+                  </ShaderPart>
+                  <ShaderPart type='FRAGMENT' style="display:none;">
+                    #ifdef GL_FRAGMENT_PRECISION_HIGH
+                    precision highp float;
+                    #else
+                    precision mediump float;
+                    #endif
+
+                    uniform vec3 light0_Direction;
+                    uniform sampler2D tex;
+
+                    varying vec3 col;
+                    varying vec3 fragNormal;
+
+                    void main()
+                    {
+                    vec3 normal = normalize(fragNormal);
+                    vec2 texCoord = clamp(gl_PointCoord, 0.01, 0.99);
+                    vec4 texColor = texture2D(tex, texCoord);
+                    if(texColor.a < 0.5)
+                    {
+                    discard;
+                    }
+                    //normal = normalize(texColor.rgb);
+                    float diff = dot(-light0_Direction, texColor.rgb);
+                    //diff = (1.0 + diff) * 0.5;
+                    gl_FragColor = vec4(diff * texColor.rgb * col, texColor.a);
+                    }
+                  </ShaderPart>
+                </ComposedShader>
+              </Appearance>
+              <!--Sphere></Sphere-->
+              <binaryGeometry id="bg0" DEF='BG_0'
+                              vertexCount='1146222'
+                              primType='"POINTS"'
+                              position='247.080001831 126.869995117 -19.8899993896'
+                              size='563.619995117 505.299987793 84.7600021362'
+                              coord='aopt50BG_0_coordBinary.bin+8'
+                              color='aopt50BG_0_colorBinary.bin+4'
+                              coordType='Int16' colorType='Uint8'>
+              </binaryGeometry>
+            </Shape>
+        </transform>
+
+<!--        <Shape DEF="PlaneShape">-->
+<!--          <Appearance>-->
+<!--            <Material diffuseColor='0.603 0.894 0.909' transparency="0.5"></Material>-->
+<!--          </Appearance>-->
+<!--          <Plane ccw='true' center='247.080001831 126.869995117 9.8899993896'-->
+<!--                 lit='true' metadata='X3DMetadataObject'-->
+<!--                 primType="['TRIANGLES']" size='500,500' solid='true' subdivision='1,1' useGeoCache='true' ></Plane>-->
+<!--        </Shape>-->
+
+      </Group>
+
+      <Transform id="marker" scale="5 5 5" translation="0 0 0">
+        <Shape>
+          <Appearance>
+            <Material diffuseColor="#FFD966"></Material>
+          </Appearance>
+          <Sphere></Sphere>
+        </Shape>
+      </Transform>
+
+      <Transform id="groupTrans">
+        <Shape USE="group"></Shape>
+      </Transform>
+
+      <timeSensor DEF="time" id="time" cycleInterval="4" loop="false" enabled="false"></timeSensor>
+      <PositionInterpolator DEF="trans" id="trans" key="0 1" keyValue="0 0 0  -352.4 -454.98 -9.74"></PositionInterpolator>
+      <OrientationInterpolator DEF="rotate" id="rotate" key="0 1" keyValue="0 0 0  0 0 0"></OrientationInterpolator>
+      <!--    TouchSensor binds to the node next to it -->
+      <!--    <TouchSensor DEF='touch'></TouchSensor>-->
+      <!--    <Route fromNode='touch' fromField='touchTime' toNode='TIME' toField='startTime'></Route>-->
+      <Route fromNode="time" fromField ="fraction_changed" toNode="trans" toField="set_fraction"></Route>
+      <Route fromNode="trans" fromField ="value_changed" toNode="vp0Trans" toField="translation"></Route>
+      <Route fromNode="time" fromField ="fraction_changed" toNode="rotate" toField="set_fraction"></Route>
+      <Route fromNode="rotate" fromField ="value_changed" toNode="vp0Trans" toField="rotation"></Route>
+    </Scene>
+  </x3d>
+
+</div>
+</body>
+</html>

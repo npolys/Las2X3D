@@ -1,0 +1,344 @@
+<!DOCTYPE>
+<html >
+<head>
+  <title></title>
+  <link rel="stylesheet" type="text/css" href="https://x3dom.org/download/dev/x3dom.css" />
+  <script type="text/javascript" src="https://x3dom.org/download/dev/x3dom-full.debug.js"></script>
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta http-equiv='Content-Type' content='text/html;charset=utf-8'/>
+  <meta http-equiv="X-UA-Compatible" content="chrome=1,IE=edge" />
+  <title>Custom Shaders in X3DOM</title>
+  <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'/>
+  <link rel='stylesheet' type='text/css' href='navbar.css'/>
+  <link rel='stylesheet' type='text/css' href='control.css'/>
+
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.css">
+  <script src="//code.jquery.com/jquery-1.10.2.min.js"></script>
+  <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+  <script src="PointPropertiesParameter.js"></script>
+  <script>
+    document.onload = () => {
+        //////////////////// navbar control /////////////////////
+        document.getElementById("light")
+                .addEventListener('click', ()=>{
+                  const spotlight = document.getElementById("spotlight");
+                  const lightfield = document.getElementById("lightField");
+                  if (lightfield.getAttribute("value") === "1.0") {    // if light's off
+                    document.getElementById("light").innerHTML = "Light: off";
+                    spotlight.setAttribute("on", "False");
+                    lightfield.setAttribute("value", "0.0");
+                    console.log(lightfield.getAttribute("value"));
+                  } else {                                             // if light's on
+                    document.getElementById("light").innerHTML = "Light: on";
+                    spotlight.setAttribute("on", "True");
+                    lightfield.setAttribute("value", "1.0");
+                  }
+                  event.preventDefault();
+                });
+        document.getElementById("pointColor")
+                .addEventListener('click', ()=>{
+                    const colorfield = document.getElementById("colorModeField");
+                    document.getElementById("color").innerHTML = "Color: Point Color";
+                    colorfield.setAttribute("value", "0.0");
+                    console.log(colorfield.getAttribute("value"));
+                  event.preventDefault();
+                });
+      document.getElementById("textureColor")
+              .addEventListener('click', ()=>{
+                const colorfield = document.getElementById("colorModeField");
+                document.getElementById("color").innerHTML = "Color: Texutre Color";
+                colorfield.setAttribute("value", "1.0");
+                console.log(colorfield.getAttribute("value"));
+                event.preventDefault();
+              });
+      document.getElementById("pointAndTextureColor")
+              .addEventListener('click', ()=>{
+                const colorfield = document.getElementById("colorModeField");
+                document.getElementById("color").innerHTML = "Color: Point and Texture Color";
+                colorfield.setAttribute("value", "2.0");
+                console.log(colorfield.getAttribute("value"));
+                event.preventDefault();
+              });
+        document.getElementById("r50")
+                .addEventListener('click', ()=>{
+                  document.getElementById("switcher").setAttribute("whichChoice", '0');
+                  document.getElementById("resolution").innerHTML = "Resolution: 1/50";
+                  event.preventDefault();
+                });
+        document.getElementById("r25")
+                .addEventListener('click', ()=>{
+                  document.getElementById("switcher").setAttribute("whichChoice", '1');
+                  document.getElementById("resolution").innerHTML = "Resolution: 1/25";
+                  event.preventDefault();
+                });
+        document.getElementById("r10")
+                .addEventListener('click', ()=>{
+                  document.getElementById("switcher").setAttribute("whichChoice", '2');
+                  document.getElementById("resolution").innerHTML = "Resolution: 1/10";
+                  event.preventDefault();
+                });
+        document.getElementById("r05")
+                .addEventListener('click', ()=>{
+                document.getElementById("switcher").setAttribute("whichChoice", '3');
+                document.getElementById("resolution").innerHTML = "Resolution: 1/5 ";
+                event.preventDefault();
+              });
+    };
+
+    //Round a float value to x.xx format
+    function roundWithTwoDecimals(value) {
+      return (Math.round(value * 100)) / 100;
+    }
+
+  </script>
+</head>
+
+<body>
+<div style="height: 50px;background-color: black">
+  <ul class="nav">
+    <li class="nav-dropdown">
+      <a id="resolution" href="javascript:void(0)" class="nav-dropbtn">Resolution: 1/50</a>
+      <div class="nav-dropdown-content">
+        <a id="r50" href="#">1/50</a>
+        <a id="r25" href="#">1/25</a>
+        <a id="r10" href="#">1/10</a>
+        <a id="r05" href="#">1/5</a>
+      </div>
+    </li>
+    <li class="nav"><a id="light" href="#">Light: on</a></li>
+    <li class="nav-dropdown">
+      <a id="color" href="javascript:void(0)" class="nav-dropbtn">Color: Point and Texture Color</a>
+      <div class="nav-dropdown-content">
+        <a id="pointColor" value="0.0" href="#">Point Color</a>
+        <a id="textureColor" value="1.0" href="#">Texture Color</a>
+        <a id="pointAndTextureColor" value="0.0" href="#">Point and Texture Color</a>
+      </div>
+    </li>
+  </ul>
+</div>
+
+<div style="height: 100%;width: 100%">
+  <!-- point properties control panel -->
+  <div class="labelOverlay">
+    <h2>Custom Shader in X3DOM</h2>
+
+    This shader intends to implement <a href="http://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4-WD1/Part01/components/shape.html#PointProperties">"PointProperties"</a> shader in X3DOM.
+    If the distance from viewpoint to the point is d,
+    the actual point size is calculated by scale/(attA+attB*d+attC*d*d) and then clipped by "min point size" and
+    "max point size".
+    <h3>Point Property Parameters:</h3>
+    <p>
+      min point size: <span id="minPointFieldLabel">1.0</span>
+    <div class="paramSlider" id="sliderMin"></div>
+    </p>
+    <p>
+      max point size: <span id="maxPointFieldLabel">10.0</span>
+    <div class="paramSlider" id="sliderMax"></div>
+    </p>
+    <p>
+      scale point size: <span id="scaleFieldLabel">10.0</span>
+    <div class="paramSlider" id="sliderScale"></div>
+    </p>
+    <p>
+      Attenuation A: <span id="attAFieldLabel">1.0</span>
+    <div class="paramSlider" id="sliderAttA"></div>
+    </p>
+    <p>
+      Attenuation B: <span id="attBFieldLabel">0.0</span>
+    <div class="paramSlider" id="sliderAttB"></div>
+    </p>
+    <p>
+      Attenuation C: <span id="attCFieldLabel">0.0</span>
+    <div class="paramSlider" id="sliderAttC"></div>
+    </p>
+  </div>
+  <!-- x3d scene -->
+  <x3d id="x3dElement" showStat="true" showLog="false"
+       x="0px" y="0px"
+       width="100%" height="100%">
+    <Scene id="x3dScene">
+        <transform DEF="vp0Trans" id="vp0Trans">
+          <Viewpoint DEF="vp0" id='vp0' position="387.5 357.91 20.45"
+                     orientation="0.36959 0.57356 0.73105 2.35696" description="perspective"></Viewpoint>
+        </transform>
+        <navigationInfo headlight='false'></navigationInfo>
+        <Background skyColor='0.4 0.4 0.4'></Background>
+        <SpotLight DEF="spot" id='spotlight' on ="TRUE" beamWidth='0.9' color='1 1 1' cutOffAngle='0.78'
+                   location='250 350 360' radius='800' intensity='1.0' shadowIntensity='0.5'
+                   shadowCascades="1" shadowFilterSize="16" shadowMapSize="512">  </SpotLight>
+
+        <Group onclick="handleGroupClick(event)" DEF="group">
+
+          <Switch whichChoice="0" id="switcher">
+            <transform DEF="travel50" id='travel50'>
+              <Shape DEF="Catawba50">
+                <Appearance DEF="appearPP">
+                  <imagetexture url="circle_texture.png"></imagetexture>
+                  <ComposedShader>
+                    <field name="tex" type="SFInt32" value="0"></field>
+                    <field id="minPointField" name='minPoint' type='SFFloat' value='1.0'></field>
+                    <field id="maxPointField"  name='maxPoint'  type='SFFloat' value='10.0'></field>
+                    <field id="scaleField" name='scale' type='SFFloat' value='10.0'></field>
+                    <field id="attAField" name='attA' type='SFFloat' value='1.0'></field>
+                    <field id="attBField" name='attB' type='SFFloat' value='0.0'></field>
+                    <field id="attCField" name='attC' type='SFFloat' value='0.0'></field>
+                    <field id="lightField" name='light' type='SFFloat' value='1.0'></field>
+                    <field id="colorModeField" name='colorMode' type='SFFloat' value='2.0'></field>
+                    <ShaderPart id='vertShader' type='VERTEX' style="display:none;">
+                      attribute vec4 position;
+                      attribute vec3 normal;
+                      attribute vec3 color;
+
+                      uniform mat4 modelViewMatrix;
+                      uniform mat4 modelViewMatrixInverse;
+                      uniform mat4 modelViewProjectionMatrix;
+                      uniform mat4 normalMatrix;
+                      uniform vec3 bgSize;
+                      uniform vec3 bgCenter;
+                      uniform float bgPrecisionMax;
+                      uniform float bgPrecisionColMax;
+
+                      //application point size parameters
+                      uniform float minPoint;
+                      uniform float maxPoint;
+                      uniform float scale;
+                      uniform float attA;
+                      uniform float attB;
+                      uniform float attC;
+
+                      varying vec3 col;
+                      varying vec3 fragNormal;
+
+                      void main()
+                      {
+                      vec3 vertPosition = position.xyz;
+                      vertPosition = bgCenter + bgSize * vertPosition / bgPrecisionMax;
+
+                      gl_Position = modelViewProjectionMatrix * vec4(vertPosition, 1.0);
+                      fragNormal = (normalMatrix * vec4(normal, 0.0)).xyz;
+
+                      // calculate point size
+                      float ndc = gl_Position.z;  // NDC in [-1, 1] (by perspective divide)
+                      float depth = (ndc+1.0) * 0.5;             // depth in [0, 1]
+                      gl_PointSize = min(maxPoint, max( scale*1.0 / (attA+attB*depth+attC*depth*depth), minPoint));
+
+                      col = color / bgPrecisionColMax;
+                      }
+                    </ShaderPart>
+                    <ShaderPart id='fragShader' type='FRAGMENT' style="display:none;">
+                      #ifdef GL_FRAGMENT_PRECISION_HIGH
+                      precision highp float;
+                      #else
+                      precision mediump float;
+                      #endif
+
+                      uniform vec3 light0_Direction;
+                      uniform sampler2D tex;
+                      uniform float light; // 1.0 means lights on
+                      uniform float colorMode; // 0.0 = point color, 1.0 = texture color, 2.0 = t&p color
+
+                      varying vec3 col;
+                      varying vec3 fragNormal;
+
+                      void main()
+                      {
+                        // init texture color and light coefficient
+                        vec4 texColor = vec4(1.0, 1.0, 1.0, 1.0);
+                        float diff = 1.0;
+                        vec3 color = col;
+
+                        if (colorMode-1.0>-0.001) {           // acquire texture if it should be used
+                          vec2 texCoord = clamp(gl_PointCoord, 0.01, 0.99);
+                          texColor = texture2D(tex, texCoord);
+
+                          if(texColor.a < 0.5) {       // apply the shape of texture to point
+                          discard;
+                          }
+                        }
+
+                        if (abs(colorMode-1.0)<0.001) {          // unable point color
+                          color = vec3(1.0, 1.0, 1.0);
+                        }
+
+                        if (abs(light-1.0)<0.001) {
+                          diff = dot(-light0_Direction, texColor.rgb);
+                          diff = (1.0 + diff) * 0.5;
+                        }
+
+                        gl_FragColor = vec4(diff * texColor.rgb * color, texColor.a);
+                      }
+                    </ShaderPart>
+                  </ComposedShader>
+                </Appearance>
+                <!--Sphere></Sphere-->
+                <binaryGeometry id="bg50" DEF='BG_50'
+                                vertexCount='1146222'
+                                primType='"POINTS"'
+                                position='247.080001831 126.869995117 -19.8899993896'
+                                size='563.619995117 505.299987793 84.7600021362'
+                                coord='aopt50BG_0_coordBinary.bin+8'
+                                color='aopt50BG_0_colorBinary.bin+4'
+                                coordType='Int16' colorType='Uint8'>
+                </binaryGeometry>
+              </Shape>
+            </transform>
+            <transform DEF="travel25" id='travel25'>
+              <shape DEF='Catawba25'>
+                <Appearance USE="appearPP"></Appearance>
+                <binaryGeometry id = "bg25" DEF='BG_25'
+                                vertexCount='2292445'
+                                primType='"POINTS"'
+                                position='248.925003052 126.319999695 -19.8899993896'
+                                size='568.570007324 506.399993896 84.7600021362'
+                                coord='aopt25BG_0_coordBinary.bin+8'
+                                color='aopt25BG_0_colorBinary.bin+4'
+                                coordType='Int16' colorType='Uint8'>
+                </binaryGeometry>
+              </shape>
+            </transform>
+            <transform DEF="travel10" id='travel10'>
+              <shape DEF='Catawba10'>
+                  <Appearance USE="appearPP"></Appearance>
+                  <binaryGeometry id="bg10" DEF='BG_10'
+                                  vertexCount='5731114'
+                                  primType='"POINTS"'
+                                  position='248.284988403 128.064987183 -18.0400009155'
+                                  size='569.549987793 508.909973145 92.4799957275'
+                                  coord='aopt10BG_0_coordBinary.bin+8'
+                                  color='aopt10BG_0_colorBinary.bin+4'
+                                  coordType='Int16' colorType='Uint8'>
+                  </binaryGeometry>
+              </shape>
+            </transform>
+            <transform DEF="travel05" id='travel05'>
+              <shape DEF='Catawba05'>
+                <Appearance USE="appearPP"></Appearance>
+                <binaryGeometry id="bg05" DEF='BG_05'
+                                vertexCount='11462229'
+                                primType='"POINTS"'
+                                position='248.36000061 127.819999695 -18.0400009155'
+                                size='569.700012207 509.399993896 92.4799957275'
+                                coord='aopt5BG_0_coordBinary.bin+8'
+                                color='aopt5BG_0_colorBinary.bin+4'
+                                coordType='Int16' colorType='Uint8'>
+                </binaryGeometry>
+              </shape>
+            </transform>
+          </Switch>
+      </Group>
+      <timeSensor DEF="time" id="time" cycleInterval="10" loop="false" enabled="false"></timeSensor>
+      <PositionInterpolator DEF="trans" id="trans" key="0 1" keyValue="0 0 0  -352.4 -454.98 -9.74"></PositionInterpolator>
+      <OrientationInterpolator DEF="rotate" id="rotate" key="0 1" keyValue="0 0 1 0  0 0 1 0"></OrientationInterpolator>
+      <Route id="rt1" fromNode="time" fromField ="fraction_changed" toNode="trans" toField="set_fraction"></Route>
+      <Route id="rt2" fromNode="trans" fromField ="value_changed" toNode="vp0Trans" toField="translation"></Route>
+      <Route id="rr1" fromNode="time" fromField ="fraction_changed" toNode="rotate" toField="set_fraction"></Route>
+      <Route id="rr2" fromNode="rotate" fromField ="value_changed" toNode="vp0Trans" toField="rotation"></Route>
+    </Scene>
+  </x3d>
+
+</div>
+</body>
+</html>

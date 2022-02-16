@@ -1,0 +1,248 @@
+
+<html >
+
+<head>
+  <title></title>
+  <link rel="stylesheet" type="text/css" href="https://x3dom.org/download/dev/x3dom.css" />
+  <script type="text/javascript" src="https://x3dom.org/download/dev/x3dom-full.debug.js"></script>
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta http-equiv='Content-Type' content='text/html;charset=utf-8'/>
+  <meta http-equiv="X-UA-Compatible" content="chrome=1,IE=edge" />
+  <title>Custom Shaders in X3DOM</title>
+  <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'/>
+
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.css">
+  <script src="//code.jquery.com/jquery-1.10.2.min.js"></script>
+  <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js"></script>
+
+  <style>
+    .labelOverlay
+    {
+      position:fixed;
+      width: 400px;
+      padding:8px;
+      margin:16px;
+      background:#888888;
+      background: linear-gradient(#BBBBBB, #888888);
+      border-radius:8px;
+      border:2px solid #EEEEEE;
+      box-shadow: 3px 3px 3px rgba(0, 0, 0, 0.25);
+      font-weight:bold;
+      color:white;
+      z-index:20000;
+    }
+    .x3domContext
+    {
+      border: none;
+      background:#888888;
+      background: linear-gradient(#777777, #333333);
+    }
+    .paramSlider
+    {
+      margin: 0 8px;
+    }
+  </style>
+  <script>
+    // point properties parameter setting
+    $(function() {
+      $( "#sliderMin" ).slider({
+        min: 0.0, max: 10.0, step: 0.1, value: 1.0,
+        slide: function( event, ui ) {
+          changeShaderParamValue('minPointField', ui.value);
+        }
+      });
+    });
+
+    $(function() {
+      $( "#sliderMax" ).slider({
+        min: 10.0, max: 50.0, step: 0.1, value: 20.0,
+        slide: function( event, ui ) {
+          changeShaderParamValue('maxPointField', ui.value);
+        }
+      });
+    });
+    // Attenuation Parameters
+    $(function() {
+      $( "#sliderAttA" ).slider({
+        min: 0.0, max: 10.0, step: 0.1, value: 1.0,
+        slide: function( event, ui ) {
+          changeShaderParamValue('attAField', ui.value);
+        }
+      });
+    });
+
+    $(function() {
+      $( "#sliderAttB" ).slider({
+        min: 0.0, max: 10.0, step: 0.1, value: 1.0,
+        slide: function( event, ui ) {
+          changeShaderParamValue('attBField', ui.value);
+        }
+      });
+    });
+
+    $(function() {
+      $( "#sliderAttC" ).slider({
+        min: 0.0, max: 10.0, step: 0.1, value: 1.0,
+        slide: function( event, ui ) {
+          changeShaderParamValue('attCField', ui.value);
+        }
+      });
+    });
+
+    function changeShaderParamValue(fieldElementName, value)
+    {
+      var fieldDOMElement = document.getElementById(fieldElementName);
+
+      if (fieldDOMElement)
+      {
+        fieldDOMElement.setAttribute("value", parseFloat(value));
+
+        var labelElement = document.getElementById(fieldElementName + "Label");
+
+        if (labelElement)
+        {
+          labelElement.innerHTML = value;
+        }
+      }
+    }
+
+    // onclick events
+    function getPointAttr(event) {
+      alert("ddd");
+    }
+  </script>
+</head>
+
+<body>
+
+<div class="labelOverlay">
+  <h1>Custom Shader in X3DOM</h1>
+
+  This shader intends to implement <a href="http://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4-WD1/Part01/components/shape.html#PointProperties">"PointProperties"</a> shader in X3DOM.
+  The parameters include "point size scale factor" (default size without attenuation), "min point size",
+  "max point size", and "attenuation A, B, and C". If the distance from viewpoint to the point is d,
+  the actual point size is calculated by 1/(attA+attB*d+attC*d*d) and then clipped by "min point size" and
+  "max point size".
+  <h2>Point Property Parameters:</h2>
+  <p>
+    min point size: <span id="minPointFieldLabel">1.0</span>
+  <div class="paramSlider" id="sliderMin"></div>
+  </p>
+  <p>
+    max point size: <span id="maxPointFieldLabel">20.0</span>
+  <div class="paramSlider" id="sliderMax"></div>
+  </p>
+  <p>
+    Attenuation A: <span id="attAFieldLabel">1.0</span>
+  <div class="paramSlider" id="sliderAttA"></div>
+  </p>
+  <p>
+    Attenuation B: <span id="attBFieldLabel">1.0</span>
+  <div class="paramSlider" id="sliderAttB"></div>
+  </p>
+  <p>
+    Attenuation C: <span id="attCFieldLabel">1.0</span>
+  <div class="paramSlider" id="sliderAttC"></div>
+  </p>
+</div>
+<x3d xmlns="http://www.web3d.org/specifications/x3d-namespace" showStat="true" showLog="false" x="0px" y="0px"
+     width="100%" height="100%">
+  <Scene pickMode="color">
+    <Viewpoint position="680.32636 357.08604 160.90422" orientation="0.36959 0.57356 0.73105 2.35696" description="perspective"></Viewpoint>
+    <Shape onclick="getPointAttr(event);">
+      <Appearance>
+        <!--Material></Material-->
+        <imagetexture url="circle_texture.png"></imagetexture>
+        <ComposedShader>
+          <field name="tex" type="SFInt32" value="0"></field>
+
+          <field id="minPointField" name='minPoint' type='SFFloat' value='1.0'></field>
+          <field id="maxPointField"  name='maxPoint'  type='SFFloat' value='20.0'></field>
+          <field id="attAField" name='attA' type='SFFloat' value='1.0'></field>
+          <field id="attBField" name='attB' type='SFFloat' value='1.0'></field>
+          <field id="attCField" name='attC' type='SFFloat' value='1.0'></field>
+<!--          <field id="attenuation"  name='attenuation'  type='vec3' value='1 1 1'></field>-->
+          <field id="colField" name="col" type="SFString" value="Color"></field>
+          <ShaderPart type='VERTEX' style="display:none;">
+            attribute vec4 position;
+            attribute vec3 color;
+
+            uniform mat4 modelViewMatrix;
+            uniform mat4 modelViewMatrixInverse;
+            uniform mat4 modelViewProjectionMatrix;
+            uniform mat4 normalMatrix;
+            uniform vec3 bgSize;
+            uniform vec3 bgCenter;
+            uniform float bgPrecisionMax;
+            uniform float bgPrecisionColMax;
+
+            //application parameters
+            uniform float minPoint;
+            uniform float maxPoint;
+            uniform float attA;
+            uniform float attB;
+            uniform float attC;
+
+            varying vec3 col;
+
+            void main()
+            {
+            vec3 vertPosition = position.xyz;
+            vertPosition = bgCenter + bgSize * vertPosition / bgPrecisionMax;
+
+            gl_Position = modelViewProjectionMatrix * vec4(vertPosition, 1.0);
+
+            //vec3 ndc = gl_Position.xyz / gl_Position.w;  // NDC in [-1, 1] (by perspective divide)
+
+            //float depth = (ndc.z * 0.5 + 0.5)*5.0;             // depth in [0, 1]
+            vec3 myvertex = vec3(modelViewMatrix * position);
+            float depth = gl_Position.w;//distance(vec3(0.0), myvertex);
+
+            gl_PointSize = min(maxPoint, max( 2000.0 / depth, minPoint));
+
+            col = color / bgPrecisionColMax;
+            }
+          </ShaderPart>
+          <ShaderPart type='FRAGMENT' style="display:none;">
+            #ifdef GL_FRAGMENT_PRECISION_HIGH
+            precision highp float;
+            #else
+            precision mediump float;
+            #endif
+
+            uniform vec3 light0_Direction;
+            uniform sampler2D tex;
+
+            varying vec3 col;
+
+            void main()
+            {
+            //gl_FragColor = vec4(col, 1.0);
+            vec2 texCoord = clamp(gl_PointCoord, 0.01, 0.99);
+            vec4 texColor = texture2D(tex, texCoord);
+            if(texColor.a < 0.5)
+            {
+            discard;
+            }
+
+            gl_FragColor = vec4(texColor.rgb * col, texColor.a);
+            }
+          </ShaderPart>
+        </ComposedShader>
+      </Appearance>
+      <!--Sphere></Sphere-->
+      <binaryGeometry id="bg0" DEF='BG_0'
+                      vertexCount='1146222'
+                      primType='"POINTS"'
+                      position='247.080001831 126.869995117 -19.8899993896'
+                      size='563.619995117 505.299987793 84.7600021362'
+                      coord='aopt25BG_0_coordBinary.bin+8'
+                      color='aopt25BG_0_colorBinary.bin+4'
+                      coordType='Int16' colorType='Uint8'>
+      </binaryGeometry>
+    </Shape>
+  </Scene>
+</x3d>
+</body>
+</html>

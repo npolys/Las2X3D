@@ -1,0 +1,9 @@
+#VRML V3.0 utf8 
+
+DirectionalLight {} 
+Background {skyColor [1 1 1] groundColor [1 1 1]} 
+  Transform {   rotation 1 0 0 -1.578	
+    children [ 
+  Shape{ geometry 
+
+ PointSet{ coord Coordinate { point [ 

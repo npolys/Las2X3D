@@ -1,0 +1,632 @@
+
+<html >
+
+<head>
+  <title></title>
+  <link rel="stylesheet" type="text/css" href="https://x3dom.org/download/dev/x3dom.css" />
+  <script type="text/javascript" src="https://x3dom.org/download/dev/x3dom-full.debug.js"></script>
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta http-equiv='Content-Type' content='text/html;charset=utf-8'/>
+  <meta http-equiv="X-UA-Compatible" content="chrome=1,IE=edge" />
+  <title>Custom Shaders in X3DOM</title>
+  <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'/>
+  <link rel='stylesheet' type='text/css' href='navbar.css'/>
+  <link rel='stylesheet' type='text/css' href='control.css'/>
+
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.css">
+  <script src="//code.jquery.com/jquery-1.10.2.min.js"></script>
+  <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+  <script src="PointPropertiesParameter.js"></script>
+  <script src="saveData.js"></script>
+  <script src="requests.js"></script>
+  <script>
+    // travel events
+    let text;
+    let routes = [];
+    document.onload = function() {
+        const time = document.getElementById("time");
+        const x3dElement = document.getElementById('x3dElement');
+        const runtime = x3dElement.runtime;
+        const fpsDiv = document.getElementById('fps');
+        const drawcalls = document.getElementById('dc');
+        const timestamps = document.getElementById('ts');
+        const travelb = document.getElementById("travelButton");
+        // save fps array
+        let fpsList = [];
+        let elapsedTime = 0.0;
+
+        // to be executed
+        function endTravel() {
+            // modify travelTrigger button
+            travelb.value = "0";
+            travelb.innerHTML = 'Start Travel';
+            // end route
+            time.setAttribute("enabled", "false");
+            let seconds = new Date().getTime() / 1000.0;
+            //console.log(seconds);
+            time.setAttribute('stopTime', seconds.toString());
+            // reset fps
+            runtime.exitFrame = function () {
+                fpsDiv.innerHTML = "0.0";
+                //drawcalls.innerHTML = "0.0";
+                timestamps.innerHTML = "0.0";
+            };
+            // record and display fps array
+            console.log(fpsList);
+            const minps = document.getElementById("minPointFieldLabel").innerHTML;
+            const maxps = document.getElementById("maxPointFieldLabel").innerHTML;
+            const sps = document.getElementById("scaleFieldLabel").innerHTML;
+            const aps = document.getElementById("attAFieldLabel").innerHTML;
+            const bps = document.getElementById("attBFieldLabel").innerHTML;
+            const cps = document.getElementById("attCFieldLabel").innerHTML;
+            text = document.getElementById("dataText").innerHTML+"<br>"+
+                "min_point_size="+minps+"<br>max_point_size="+maxps+"<br>scale="+sps+
+                "<br>a="+aps+"<br>b="+bps+"<br>c="+cps+"<br>"+fpsList.join("<br>");
+
+            // data to be post to backend
+            let data = [];
+            fpsList.forEach(element => {
+              let s = element.split(', ');
+              data.push({
+                  timestamp: s[0],
+                  fps: s[1]
+              });
+            });
+            routes.push({
+              texSize: '1',
+              resolution: document.getElementById("resolution").innerHTML.split(' ')[1],
+              light: document.getElementById("light").innerHTML.split(' ')[1],
+              texture: document.getElementById("texture").innerHTML.split(' ')[1],
+              min_point_size: minps,
+              max_point_size: maxps,
+              scale: sps,
+              a: aps,
+              b: bps,
+              c: cps,
+              data: data
+            });
+
+            document.getElementById("dataText").innerHTML = text;
+
+        }
+
+        function startTravel(maxPoint, minPoint, scale, a, b, c, cnt) {
+          resetView();
+          console.log("start",maxPoint, minPoint, scale, a, b, c);
+          // reset fpslist
+          fpsList = [];
+
+          // set time sensor attribute
+          time.setAttribute("enabled", "true");
+          let seconds = new Date().getTime() / 1000.0;
+          //console.log(seconds);
+          time.setAttribute('startTime', seconds.toString());
+          // set button attribute
+          travelb.innerHTML = 'End Travel';
+          travelb.value = "1";
+
+          // get fps
+          runtime.exitFrame = function () {
+            fpsDiv.innerHTML = runtime.fps.toFixed(2);
+            drawcalls.innerHTML = runtime.states.infos['#DRAWS:'].toFixed(2);
+            timestamps.innerHTML = time.getAttribute("elapsedTime").toFixed(2);
+
+            // end travel if route is finished
+            if (travelb.value == "1" &&
+                (time.getAttribute("elapsedTime") - time.getAttribute("cycleInterval") >= -0.01
+                || elapsedTime - time.getAttribute("cycleInterval") >= -0.01)) {
+              console.log("end2");
+              endTravel();
+              if (cnt < 10) {
+                cnt ++;
+                console.log(cnt);
+                startTravel(maxPoint, minPoint, scale, a, b, c, cnt);
+              }
+            }
+          }
+        }
+
+        function resetView() {
+          // reset viewpoint to init
+          document.getElementById("vp0Trans").setAttribute("translation", "0 0 0");
+          document.getElementById("vp0Trans").setAttribute("rotation", "0 0 0 0");
+          document.getElementById("vp0").setAttribute("position", "387.5 357.91 20.45");
+          document.getElementById("vp0").setAttribute("orientation", "0.36959 0.57356 0.73105 2.35696");
+          let viewpoint = runtime.viewpoint();
+          let center = new x3dom.fields.SFVec3f(247.080001831, 126.869995117, -19.8899993896);
+          viewpoint.setCenterOfRotation(center);
+          elapsedTime = 0.0;
+
+        }
+
+        const dictTex = {0:'circle_texture.png', 1:'circle_texture_2.png',
+          2:'circle_texture_5.png',3:'circle_texture_10.png'};
+        $("#travelButton").click(function() {
+            // process travel
+            //[1.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0].forEach(scale => {
+              let scale = document.getElementById('scaleField').getAttribute('value');
+              let maxPoint=scale, minPoint=1.0, a=1.0, b=0.0, c =0.01, cnt=0;
+              // setParamValues(maxPoint, minPoint, scale, a, b, c);
+              if (this.value == "0") {
+                startTravel(maxPoint, minPoint, scale, a, b, c, cnt);
+              }
+              else {
+                //console.log("end");
+                endTravel();
+              }
+            //});
+        });
+
+        // record fps every second
+        setInterval(function () {
+            if (travelb.value == "1") {
+                // print timestamp and fps to console
+                fpsList.push(time.getAttribute("elapsedTime") + ", " + fpsDiv.innerHTML);
+                elapsedTime += 0.1;
+            }
+        }, 1000);
+
+        // user defined route
+        let routeArr = [];
+        const duration = document.getElementById("duration");
+        const trans = document.getElementById("trans");
+        const rot = document.getElementById("rotate");
+        const vpPos = document.getElementById("vp0").getAttribute("position").split(' ');
+        const vpOrient = document.getElementById("vp0").getAttribute("orientation").split(' ');
+        // TODO: ray can be used for picking
+        let line = runtime.getViewingRay(runtime.getWidth()/2, runtime.getHeight()/2);
+        let timestamp = document.getElementById("timestamp").value;
+        document.getElementById("setKeyPointButton")
+                .addEventListener('click', ()=>{setKeyPoint(x3dom, runtime, timestamp, vpPos, vpOrient)});
+        document.getElementById("finishSetRouteButton")
+                .addEventListener('click', ()=>{finishSetRoute(duration, trans, rot, routeArr)});
+        //////////////////// navbar control /////////////////////
+        document.getElementById("light")
+                .addEventListener('click', ()=>{
+                  const spotlight = document.getElementById("spotlight");
+                  const lightfield = document.getElementById("lightField");
+                  if (lightfield.getAttribute("value") === "1.0") {
+                    document.getElementById("light").innerHTML = "Light: off";
+                    spotlight.setAttribute("on", "False");
+                    lightfield.setAttribute("value", "0.0");
+                    console.log(lightfield.getAttribute("value"));
+                  } else {
+                    document.getElementById("light").innerHTML = "Light: on";
+                    spotlight.setAttribute("on", "True");
+                    lightfield.setAttribute("value", "1.0");
+                  }
+                  event.preventDefault();
+                });
+        document.getElementById("texture")
+                .addEventListener('click', ()=>{
+                  const texturefield = document.getElementById("textureField");
+                  if (texturefield.getAttribute("value") === "1.0") {
+                      document.getElementById("texture").innerHTML = "Texture: off";
+                    texturefield.setAttribute("value", "0.0");
+                  } else {
+                      document.getElementById("texture").innerHTML = "Texture: on";
+                    texturefield.setAttribute("value", "1.0");
+                  }
+                  event.preventDefault();
+                });
+        document.getElementById("route_type")
+                .addEventListener('click', ()=>{
+                  const trans = document.getElementById("trans");
+                  const rot = document.getElementById("rotate");
+                  if (document.getElementById("route_type").innerHTML === "Route: line") {
+                    document.getElementById("route_type").innerHTML = "Route: curve";
+                    trans.setAttribute("key", "0 0.25 0.5 0.75 1");
+                    rot.setAttribute("key", "0 0.25 0.5 0.75 1");
+                    trans.setAttribute("keyValue", "0 0 0  -88.1 -113.745 -2.435  -176.2 -227.49 -4.87  -264.3 -341.235 -7.305  -352.4 -454.98 -9.74");
+                    rot.setAttribute("keyValue", "0 0 1 0  0 0 1 -0.54 0 0 1 0.14 0 0 1 -0.14 0 0 1 0.14");
+
+                  } else {
+                    document.getElementById("route_type").innerHTML = "Route: line";
+                    trans.setAttribute("key", "0 1");
+                    rot.setAttribute("key", "0 1");
+                    trans.setAttribute("keyValue", "0 0 0  -352.4 -454.98 -9.74");
+                    rot.setAttribute("keyValue", "0 0 1 0  0 0 1 0");
+
+                  }
+                  event.preventDefault();
+                });
+        document.getElementById("r50")
+                .addEventListener('click', ()=>{
+                  document.getElementById("switcher").setAttribute("whichChoice", '0');
+                  document.getElementById("resolution").innerHTML = "Resolution: 1/50";
+                  event.preventDefault();
+                });
+        document.getElementById("r25")
+                .addEventListener('click', ()=>{
+                  document.getElementById("switcher").setAttribute("whichChoice", '1');
+                  document.getElementById("resolution").innerHTML = "Resolution: 1/25";
+                  event.preventDefault();
+                });
+        document.getElementById("r10")
+                .addEventListener('click', ()=>{
+                  document.getElementById("switcher").setAttribute("whichChoice", '2');
+                  document.getElementById("resolution").innerHTML = "Resolution: 1/10";
+                  event.preventDefault();
+                });
+        document.getElementById("r05")
+                .addEventListener('click', ()=>{
+                document.getElementById("switcher").setAttribute("whichChoice", '3');
+                document.getElementById("resolution").innerHTML = "Resolution: 1/5 ";
+                event.preventDefault();
+              });
+        ////////////////// data window control //////////////////
+        analyzeData = (event) => {
+          let resultElement = document.getElementById("reqInfo");
+          if (event) {
+            performPostRequest(resultElement, routes, event);
+            routes=[];
+          } else {
+            console.log('no event');
+          }
+
+        }
+
+    };
+
+    // sliding window for fps data display
+    function openNav(id) {
+      document.getElementById(id).style.width = "100%";
+    }
+
+    function closeNav(id) {
+      document.getElementById(id).style.width = "0";
+    }
+
+    //Round a float value to x.xx format
+    function roundWithTwoDecimals(value) {
+      return (Math.round(value * 100)) / 100;
+    }
+
+    /////////////////// Handle click on any group member /////////////////////
+    function handleGroupClick(event) {
+      //Mark hitting point
+      $('#marker').attr('translation', event.hitPnt);
+      console.log(event);
+
+      //Display coordinates of hitting point (rounded)
+      let coordinates = event.hitPnt;
+      $('#coordX').html(roundWithTwoDecimals(coordinates[0]));
+      $('#coordY').html(roundWithTwoDecimals(coordinates[1]));
+      $('#coordZ').html(roundWithTwoDecimals(coordinates[2]));
+    }
+
+    //Handle click on a shape
+    function handleSingleClick(shape) {
+      $('#lastClickedObject').html($(shape).attr("def"));
+
+    }
+
+    $(document).ready(function(){
+      //Add a onclick callback to every shape
+      $("shape").each(function() {
+        $(this).attr("onclick", "handleSingleClick(this)");
+      });
+    });
+
+    //Handle click on the shape
+    function handleClick(event) {
+        const id = event.hitPnt[0];
+        console.log('ppp'+id);
+    }
+  </script>
+</head>
+
+<body>
+<div style="height: 50px;background-color: black">
+  <ul class="nav">
+    <li class="nav-dropdown">
+      <a id="resolution" href="javascript:void(0)" class="nav-dropbtn">Resolution: 1/50</a>
+      <div class="nav-dropdown-content">
+        <a id="r50" href="#">1/50</a>
+        <a id="r25" href="#">1/25</a>
+        <a id="r10" href="#">1/10</a>
+        <a id="r05" href="#">1/5</a>
+      </div>
+    </li>
+    <li class="nav"><a id="light" href="#">Light: on</a></li>
+    <li class="nav"><a id="texture" href="#">Texture: on</a></li>
+    <li class="nav"><a id="route_type" href="#">Route: line</a></li>
+  </ul>
+</div>
+
+<div style="height: 100%;width: 100%">
+  <!-- data window -->
+  <div id="dataWindow" class="dataWindow">
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav('dataWindow')">&times;</a>
+<!--    <a id="reqInfo" class="hidden" href="javascript:void(0)"></a>-->
+    <button type='button' id="saveButton" value="0" onclick="saveData(event)">Save</button>
+    <button type='button' id="analyzeButton" value="0" onclick="analyzeData(event)">Analysis</button>
+    <div id="dataText"
+         style="height:40%;width:90%;overflow:auto;position: absolute;bottom:100px;left: 5%;color: #1b1d21;text-align:left">
+    </div>
+  </div>
+  <!-- point properties control panel -->
+  <div class="labelOverlay">
+    <h2>Custom Shader in X3DOM</h2>
+
+    This shader intends to implement <a href="http://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4-WD1/Part01/components/shape.html#PointProperties">"PointProperties"</a> shader in X3DOM.
+    If the distance from viewpoint to the point is d,
+    the actual point size is calculated by scale/(attA+attB*d+attC*d*d) and then clipped by "min point size" and
+    "max point size".
+    <h3>Point Property Parameters:</h3>
+    <p>
+      min point size: <span id="minPointFieldLabel">1.0</span>
+    <div class="paramSlider" id="sliderMin"></div>
+    </p>
+    <p>
+      max point size: <span id="maxPointFieldLabel">10.0</span>
+    <div class="paramSlider" id="sliderMax"></div>
+    </p>
+    <p>
+      scale point size: <span id="scaleFieldLabel">10.0</span>
+    <div class="paramSlider" id="sliderScale"></div>
+    </p>
+    <p>
+      Attenuation A: <span id="attAFieldLabel">1.0</span>
+    <div class="paramSlider" id="sliderAttA"></div>
+    </p>
+    <p>
+      Attenuation B: <span id="attBFieldLabel">0.0</span>
+    <div class="paramSlider" id="sliderAttB"></div>
+    </p>
+    <p>
+      Attenuation C: <span id="attCFieldLabel">0.0</span>
+    <div class="paramSlider" id="sliderAttC"></div>
+    </p>
+  </div>
+  <!-- route and picking state table -->
+  <div class="x3dom-state-alter">
+    <button type='button' id="travelButton" value="0">Start Travel</button>
+<!--    <button type='button' id="routeButton" value="0" onclick="openNav('routePanel')">Define Route</button>-->
+    <!-- open data window -->
+    <button id="showRecordButton" onclick="openNav('dataWindow')" type='button' value="0">Show Record</button>
+    <br>
+    <h4>FPS: <div id="fps">0.0</div></h4>
+    <h4>Drawcalls: <div id="dc">0.0</div></h4>
+    <h4>TimeStamps: <div id="ts">0.0</div></h4>
+    <h4>Last clicked object:</h4>
+    <span id="lastClickedObject">-</span>
+    <h4>Click coordinates:</h4>
+      <br>
+    <table class="x3dom-state-alter">
+      <tr><td>X: </td><td id="coordX">-</td></tr>
+      <tr><td>Y: </td><td id="coordY">-</td></tr>
+      <tr><td>Z: </td><td id="coordZ">-</td></tr>
+    </table>
+  </div>
+  <!-- route defining panel -->
+  <div class="x3dom-state-alter-route" id="routePanel">
+    <table class="x3dom-state-alter-route" style="width: 400px">
+      <tr>
+        <td>Current tick: <input id="timestamp" type="text" name="Timestamp" value="0"></td>
+        <td><button type="button" id="setKeyPointButton" value="">Set Key Point</button></td>
+      </tr>
+      <tr>
+        <td>Duration: <input id="duration" type="text" name="Duration" value="0"></td>
+        <td><button type="button" id="finishSetRouteButton" value="">Finish</button></td>
+      </tr>
+    </table>
+  </div>
+  <!-- x3d scene -->
+  <x3d id="x3dElement" showStat="true" showLog="false"
+       x="0px" y="0px"
+       width="100%" height="100%">
+    <Scene id="x3dScene" pickMode="idBufId">
+<!--        <Environment id='myEnv' SSAO='true' SSAOamount='1.0' SSAOblurDepthTreshold='100.0' SSAOradius='7.0'> </Environment>-->
+        <transform DEF="vp0Trans" id="vp0Trans">
+          <Viewpoint DEF="vp0" id='vp0' position="387.5 357.91 20.45"
+                     orientation="0.36959 0.57356 0.73105 2.35696" description="perspective"></Viewpoint>
+        </transform>
+        <navigationInfo headlight='false'></navigationInfo>
+        <Background skyColor='0.4 0.4 0.4'></Background>
+        <DirectionalLight id="spotlight" direction='-0.5 1 0.5' on ="TRUE" intensity='0.2' shadowIntensity='0.5' ambientIntensity="1.0"> </DirectionalLight>
+
+      <Group onclick="handleGroupClick(event)" DEF="group">
+
+        <Switch whichChoice="0" id="switcher">
+          <transform DEF="travel50" id='travel50'>
+            <Shape DEF="Catawba50">
+              <Appearance DEF="appearPP">
+                <imagetexture url="circle_texture.png"></imagetexture>
+                <Material diffuseColor="#FF3366"></Material>
+                <ComposedShader>
+                  <field name="tex" type="SFInt32" value="0"></field>
+                  <field name="diffuseColor" type="MFVec3f" value="0.5, 0.0, 0.2"></field>
+                  <field id="minPointField" name='minPoint' type='SFFloat' value='1.0'></field>
+                  <field id="maxPointField"  name='maxPoint'  type='SFFloat' value='10.0'></field>
+                  <field id="scaleField" name='scale' type='SFFloat' value='10.0'></field>
+                  <field id="attField" name='att' type='MFVec3f' value='[1.0, 0.0, 0.0]'></field>
+                  <field id="lightField" name='light' type='SFFloat' value='1.0'></field>
+                  <field id="textureField" name='texture' type='SFFloat' value='1.0'></field>
+                  <ShaderPart id='vertShader' type='VERTEX' style="display:none;">
+                    attribute vec4 position;
+                    attribute vec3 normal;
+                    attribute vec3 color;
+
+                    uniform mat4 modelViewMatrix;
+                    uniform mat4 modelViewMatrixInverse;
+                    uniform mat4 modelViewProjectionMatrix;
+                    uniform mat4 normalMatrix;
+                    uniform vec3 bgSize;
+                    uniform vec3 bgCenter;
+                    uniform float bgPrecisionMax;
+                    uniform float bgPrecisionColMax;
+
+                    //application parameters
+                    uniform float minPoint;
+                    uniform float maxPoint;
+                    uniform float scale;
+                    uniform vec3 att;
+
+                    varying vec3 col;
+                    varying vec3 fragEyeVector;
+
+                    void main()
+                    {
+                      vec3 vertPosition = bgCenter + bgSize * position.xyz / bgPrecisionMax;
+                      gl_Position = modelViewProjectionMatrix * vec4(vertPosition, 1.0);
+
+                      float depth = gl_Position.w;
+                      gl_PointSize = clamp(scale*1.0 / (att.x+att.y*depth+att.z*depth*depth), minPoint, maxPoint);
+                      fragEyeVector = -(modelViewMatrix * vec4(vertPosition, 0.0)).xyz;
+
+                      col = color / bgPrecisionColMax;
+                    }
+                  </ShaderPart>
+                  <ShaderPart id='fragShader' type='FRAGMENT' style="display:none;">
+                    #ifdef GL_FRAGMENT_PRECISION_HIGH
+                    precision highp float;
+                    #else
+                    precision mediump float;
+                    #endif
+
+                    uniform vec3 light0_Direction;
+                    uniform vec3 light0_Color;
+                    uniform float light0_Intensity;
+                    uniform float light0_AmbientIntensity;
+
+                    uniform sampler2D tex;
+                    uniform float light; // 1.0 means lights on
+                    uniform float texture; // 1.0 means using texture
+
+                    uniform vec3 diffuseColor;
+
+                    varying vec3 col;
+                    varying vec3 fragEyeVector;
+
+
+                    void main()
+                    {
+                      vec4 color = vec4(col, 1.0);
+
+                      if (abs(color.r-0.0)<0.001 && abs(color.g-0.0)<0.001 && abs(color.b-0.0)<0.001) {
+                        color = vec4(1.0, 1.0, 1.0, 1.0);
+                      }
+                      vec2 cxy = gl_PointCoord * 2.0 - 1.0;
+                      float r = dot(cxy, cxy);
+
+                      if (abs(texture-1.0)<0.001) {
+                        vec2 texCoord = clamp(gl_PointCoord, 0.01, 0.99);
+                        vec4 texColor = texture2D(tex, texCoord);
+                        color = texColor * color;
+                        if(color.a < 0.5) {
+                        discard;
+                        }
+                      }
+                      if (r > 1.0) {
+                        discard;
+                      }
+                      if (abs(light-1.0)<0.001) {
+                        float z = sqrt(1.0 - cxy.x*cxy.x - cxy.y*cxy.y);
+                        vec3 N = normalize(vec3(cxy, z));
+                        vec3 L = normalize(light0_Direction-fragEyeVector);
+                        vec3 V = -normalize(fragEyeVector);
+                        vec3 H = normalize(L + V);
+                        float NdotL = clamp(dot(L, N), 0.0, 1.0);
+                        float NdotH = clamp(dot(H, N), 0.0, 1.0);
+
+                        float ambIntensity = 1.0;
+                        float shin = 0.2;
+                        float ambientFactor  = light0_AmbientIntensity * ambIntensity;
+                        float diffuseFactor  = light0_Intensity * NdotL;
+                        float specularFactor = light0_Intensity * pow(NdotH, shin*128.0);
+                        vec3 ambient  = light0_Color * ambientFactor;
+                        vec3 diffuse  = light0_Color * diffuseFactor;
+                        vec3 specular = light0_Color * specularFactor;
+
+                        float kd = 0.8;
+                        color = vec4(color.rgb * (ambient + diffuse) + specular, color.a);
+                      }
+                    gl_FragColor = color;
+                    }
+                  </ShaderPart>
+                </ComposedShader>
+              </Appearance>
+              <!--Sphere></Sphere-->
+              <binaryGeometry id="bg50" DEF='BG_50'
+                              vertexCount='1146222'
+                              primType='"POINTS"'
+                              position='247.080001831 126.869995117 -19.8899993896'
+                              size='563.619995117 505.299987793 84.7600021362'
+                              coord='aopt50BG_0_coordBinary.bin+8'
+                              color='aopt50BG_0_colorBinary.bin+4'
+                              coordType='Int16' colorType='Uint8'>
+              </binaryGeometry>
+
+            </Shape>
+          </transform>
+          <transform DEF="travel25" id='travel25'>
+            <shape DEF='Catawba25'>
+              <Appearance USE="appearPP"></Appearance>
+              <binaryGeometry id = "bg25" DEF='BG_25'
+                              vertexCount='2292445'
+                              primType='"POINTS"'
+                              position='248.925003052 126.319999695 -19.8899993896'
+                              size='568.570007324 506.399993896 84.7600021362'
+                              coord='aopt25BG_0_coordBinary.bin+8'
+                              color='aopt25BG_0_colorBinary.bin+4'
+                              coordType='Int16' colorType='Uint8'>
+              </binaryGeometry>
+            </shape>
+          </transform>
+          <transform DEF="travel10" id='travel10'>
+            <shape DEF='Catawba10'>
+              <Appearance USE="appearPP"></Appearance>
+              <binaryGeometry id="bg10" DEF='BG_10'
+                              vertexCount='5731114'
+                              primType='"POINTS"'
+                              position='248.284988403 128.064987183 -18.0400009155'
+                              size='569.549987793 508.909973145 92.4799957275'
+                              coord='aopt10BG_0_coordBinary.bin+8'
+                              color='aopt10BG_0_colorBinary.bin+4'
+                              coordType='Int16' colorType='Uint8'>
+
+              </binaryGeometry>
+            </shape>
+          </transform>
+          <transform DEF="travel05" id='travel05'>
+            <shape DEF='Catawba05'>
+              <Appearance USE="appearPP"></Appearance>
+              <binaryGeometry id="bg05" DEF='BG_05'
+                              vertexCount='11462229'
+                              primType='"POINTS"'
+                              position='248.36000061 127.819999695 -18.0400009155'
+                              size='569.700012207 509.399993896 92.4799957275'
+                              coord='aopt5BG_0_coordBinary.bin+8'
+                              color='aopt5BG_0_colorBinary.bin+4'
+                              coordType='Int16' colorType='Uint8'>
+
+              </binaryGeometry>
+            </shape>
+          </transform>
+        </Switch>
+
+        <!--        <Transform translation="248.925003052 186.319999695 9.8899993896" rotation="1 0 0 0">-->
+        <!--            <Shape onclick="handleClick(event)">-->
+        <!--                <Appearance><Material diffuseColor="0.7 0.7 0.7"></Material></Appearance>-->
+        <!--                <Plane solid="true" size="568.570007324 506.399993896"></Plane>-->
+        <!--            </Shape>-->
+        <!--        </Transform>-->
+      </Group>
+      <timeSensor DEF="time" id="time" cycleInterval="10" loop="false" enabled="false"></timeSensor>
+      <PositionInterpolator DEF="trans" id="trans" key="0 1" keyValue="0 0 0  -352.4 -454.98 -9.74"></PositionInterpolator>
+      <OrientationInterpolator DEF="rotate" id="rotate" key="0 1" keyValue="0 0 1 0  0 0 1 0"></OrientationInterpolator>
+
+      <Route id="rt1" fromNode="time" fromField ="fraction_changed" toNode="trans" toField="set_fraction"></Route>
+      <Route id="rt2" fromNode="trans" fromField ="value_changed" toNode="vp0Trans" toField="translation"></Route>
+      <Route id="rr1" fromNode="time" fromField ="fraction_changed" toNode="rotate" toField="set_fraction"></Route>
+      <Route id="rr2" fromNode="rotate" fromField ="value_changed" toNode="vp0Trans" toField="rotation"></Route>
+    </Scene>
+  </x3d>
+
+</div>
+</body>
+</html>
