@@ -4,7 +4,8 @@
 # October 2017
 #
 
-from laspy.file import File
+#from laspy.file import File
+import laspy
 import numpy as np
 import sys
 import os
@@ -37,17 +38,14 @@ print (arg1, arg2)
 
 # NOTE - extract LAS from LAZ first
 
-inFile = File(arg1, mode='r')
+# change for laspy 2
 
+#inFile = File(arg1, mode='r')
+inFile = laspy.read(arg1)
 
 print ('\nHeader \n')
 #Lets take a look at the header also.
-headerformat = inFile.header.header_format
-for spec in headerformat:
-	print(spec.name)
-
-print(inFile.header.offset)
-
+print (inFile.header)
 	
 # Find out what the point format looks like.
 pointformat = inFile.point_format
@@ -137,8 +135,8 @@ counter = 1
 base = int(arg2)
 #print (counter)
 
-with file('CoordsOut.pts', 'w') as outfile:
-    for data_slice in coords:
+with open('CoordsOut.pts', 'w') as outfile:
+	for data_slice in coords:
 		#print(counter)
         # The formatting string indicates that I'm writing out
         # the values in left-justified columns 7 characters in width
@@ -163,7 +161,7 @@ print('Coordinates written')
 def dumpIntensity (daFile, b):
 	inte = np.vstack(daFile.intensity)
 	counter = 1
-	with file('IntensityAsRGBOut.pts', 'w') as outfile:
+	with open('IntensityAsRGBOut.pts', 'w') as outfile:
 		for dat in inte:
 
 			if counter == base:
@@ -190,7 +188,7 @@ if intense ==1:
 def dumpColor (daFile, b):
 	colour = np.vstack((daFile.red, daFile.green, daFile.blue)).transpose()  
 	counter = 1
-	with file('ColorOut.pts', 'w') as outfile:
+	with open('ColorOut.pts', 'w') as outfile:
 		for data_slice in colour:
 			if counter == base:
 				scaled_slice = np.divide(data_slice, 65536.0)

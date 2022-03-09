@@ -2,9 +2,10 @@
 
 # Nicholas Polys, Virginia Tech
 # October 2017
-#
+# Updated in 2022 to laspy2 and python3
 
-from laspy.file import File
+#from laspy.file import File
+import laspy
 import numpy as np
 import sys
 import os
@@ -37,16 +38,20 @@ print (arg1, arg2)
 
 # NOTE - extract LAS from LAZ first
 
-inFile = File(arg1, mode='r')
+# change for laspy 2
+
+#inFile = File(arg1, mode='r')
+inFile = laspy.read(arg1)
 
 
 print ('\nHeader \n')
 #Lets take a look at the header also.
-headerformat = inFile.header.header_format
-for spec in headerformat:
-	print(spec.name)
+#headerformat = inFile.header
+#for spec in headerformat:
+#	print(spec.name)
 
-print(inFile.header.offset)
+print (inFile.header)
+#print(inFile.header.offset)
 
 	
 # Find out what the point format looks like.
@@ -139,23 +144,23 @@ base = int(arg2)
 
 #print (counter)
 
-with file('CoordsOut.pts', 'w') as outfile:
+with open('CoordsOut.pts', 'w') as outfile:
     for data_slice in coords:
 		#print(counter)
         # The formatting string indicates that I'm writing out
         # the values in left-justified columns 7 characters in width
         # with 2 decimal places.  
         #np.savetxt(outfile, data_slice, fmt='%-7.2f')
-		if counter == base:
-			np.savetxt(outfile, data_slice, fmt='%-7.2f')
+        if counter == base:
+            np.savetxt(outfile, data_slice, fmt='%-7.2f')
         # Writing out a break to indicate different slices...
         #outfile.write('# New slice\n')
-			outfile.write(', ')
-			counter = 1
+            outfile.write(', ')
+            counter = 1
 			#print('written')
-		else:
+        else:
 			#nothing
-			counter+=1
+            counter+=1
 			#print ('skipped')
 
 			
@@ -193,7 +198,7 @@ def dumpIntensity (daFile, b):
 def dumpColor (daFile, b):
 	colour = np.vstack((daFile.red, daFile.green, daFile.blue)).transpose()  
 	counter = 1
-	with file('ColorOut.pts', 'w') as outfile:
+	with open('ColorOut.pts', 'w') as outfile:
 		for data_slice in colour:
 			if counter == base:
 				scaled_slice = np.divide(data_slice, 65536.0)

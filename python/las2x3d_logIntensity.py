@@ -41,12 +41,13 @@ inFile = File(arg1, mode='r')
 
 
 print ('\nHeader \n')
-#Lets take a look at the header also.
-headerformat = inFile.header.header_format
-for spec in headerformat:
-	print(spec.name)
 
-print(inFile.header.offset)
+#inFile = File(arg1, mode='r')
+inFile = laspy.read(arg1)
+
+print ('\nHeader \n')
+#Lets take a look at the header also.
+print (inFile.header)
 
 	
 # Find out what the point format looks like.
@@ -139,7 +140,7 @@ numPoints = 0
 
 #print (counter)
 
-with file('CoordsOut.pts', 'w') as outfile:
+with open('CoordsOut.pts', 'w') as outfile:
     for data_slice in coords:
 		#print(counter)
         # The formatting string indicates that I'm writing out
@@ -167,7 +168,7 @@ def dumpIntensity (daFile, b):
 	inte = np.vstack(daFile.intensity)
 	numCol = 0
 	counter = 1
-	with file('IntensityAsRGBOut.pts', 'w') as outfile:
+	with open('IntensityAsRGBOut.pts', 'w') as outfile:
 		for dat in inte:
 
 			if counter == base:
@@ -196,7 +197,7 @@ def dumpIntensity (daFile, b):
 def dumpColor (daFile, b):
 	colour = np.vstack((daFile.red, daFile.green, daFile.blue)).transpose()  
 	counter = 1
-	with file('ColorOut.pts', 'w') as outfile:
+	with open('ColorOut.pts', 'w') as outfile:
 		for data_slice in colour:
 			if counter == base:
 				scaled_slice = np.divide(data_slice, 65536.0)
