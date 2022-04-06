@@ -155,6 +155,7 @@ def pointListGenerator(lowerBound, upperBound, amount):
         i += 1
     return result
 
+
 amount = int(arg4)
 
 pointList = pointListGenerator(lower, upper, amount)
@@ -189,7 +190,7 @@ print('Coordinates written')
 # INTENSITY or Color
 
 
-def dumpIntensity(daFile, b):
+def dumpIntensity(daFile):
     inte = np.vstack(daFile.intensity)
     counter = 1
     i = 0
@@ -230,12 +231,12 @@ def dumpIntensity(daFile, b):
 
 
 if intense == 1:
-    dumpIntensity(inFile, base)
+    dumpIntensity(inFile)
 
 # 16 bit color is 0 - 65536
 
 
-def dumpColor(daFile, b):
+def dumpColor(daFile):
     colour = np.vstack((daFile.red, daFile.green, daFile.blue)).transpose()
     counter = 1
     i = 0
@@ -262,7 +263,7 @@ def dumpColor(daFile, b):
     return
 
 # if colo == 1:
-#	dumpColor(inFile, base)
+#	dumpColor(inFile)
 
 
 if usr_dat == 1:
