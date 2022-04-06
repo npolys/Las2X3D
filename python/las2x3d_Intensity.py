@@ -27,15 +27,18 @@ generated_on = str(datetime.datetime.now())
 
 
 arg1 = sys.argv[1]    # the file name
-arg2 = sys.argv[2]	  # the sampling interval for output
-arg3 = sys.argv[3]	  # the output file
+arg2 = sys.argv[2]	  # the lower bound for the interval
+arg3 = sys.argv[3]    # the uppper bound for the interval
+arg4 = sys.argv[4]	  # the amount of points in the list
+arg5 = sys.argv[5]	  # the output file
+
 intense = 0
 colo = 0
 normo = 0
 classo = 0
 usr_dat = 0
 
-print(arg1, arg2)
+print(arg1, arg2, arg3, arg4)
 
 # NOTE - extract LAS from LAZ first
 
@@ -137,28 +140,25 @@ np.set_printoptions(threshold=sys.maxsize)
 # 					this works too and seems faster, HOWEVER every data entry is on a new line
 
 counter = 1
-base = int(arg2)
+lower = int(arg2)
+upper = int(arg3)
 # print (counter)
 
 
 # This is one method I think would be interesting to test to see if it
 # works with removing those lines
-def pointListGenerator(baseVal, percentage, amount):
+def pointListGenerator(lowerBound, upperBound, amount):
     result = []
-    startPoint = baseVal - (baseVal * percentage)
-    endPoint = baseVal + (baseVal * percentage)
     i = 0
     while i <= amount:
-        result.append(int(random.randrange(startPoint, endPoint)))
+        result.append(int(random.randrange(lowerBound, upperBound)))
         i += 1
     return result
 
+amount = int(arg4)
 
-percentage = float(input("Enter a percentage (as a decimal): "))
-amount = int(input("Enter an amount: "))
-
-pointList = pointListGenerator(base, percentage, amount)
-# print("pointList: " + pointList)
+pointList = pointListGenerator(lower, upper, amount)
+print("pointList: " + pointList)
 
 with open('CoordsOut.pts', 'w') as outfile:
     i = 0
