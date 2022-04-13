@@ -140,14 +140,18 @@ np.set_printoptions(threshold=sys.maxsize)
 # 					this works too and seems faster, HOWEVER every data entry is on a new line
 
 counter = 1
-lower = int(arg2)
-upper = int(arg3)
-# print (counter)
+# print(counter)
+
+# lower = int(arg2) # if we are using pointListGeneratorUniform
+# upper = int(arg3)
+
+mean = int(arg2)   # if we are using pointListGeneratorNormal
+stDev = int(arg3)
 
 
 # This is one method I think would be interesting to test to see if it
 # works with removing those lines
-def pointListGenerator(lowerBound, upperBound, amount):
+def pointListGeneratorUniform(lowerBound, upperBound, amount):
     result = []
     i = 0
     while i <= amount:
@@ -156,9 +160,16 @@ def pointListGenerator(lowerBound, upperBound, amount):
     return result
 
 
+def pointListGeneratorNormal(mean, stDev, amount):
+    result = np.random.normal(mean, stDev, amount)
+    return result
+
+
 amount = int(arg4)
 
-pointList = pointListGenerator(lower, upper, amount)
+# pointList = pointListGeneratorUniform(lower, upper, amount)
+
+pointList = pointListGeneratorNormal(mean, stDev, amount)
 print("pointList: " + pointList)
 
 with open('CoordsOut.pts', 'w') as outfile:
