@@ -3,6 +3,10 @@
 # Nicholas Polys, Virginia Tech
 # October 2017
 #
+# James de Chutkowski, Virginia Tech CS'24
+# April 2022
+
+# Converts .las files to .x3dv files
 
 from laspy.file import File
 import numpy as np
@@ -27,7 +31,7 @@ generated_on = str(datetime.datetime.now())
 
 arg1 = sys.argv[1]    # the file name
 arg2 = sys.argv[2]	  # the lower bound for the interval
-arg3 = sys.argv[3]    # the uppper bound for the interval
+arg3 = sys.argv[3]    # the upper bound for the interval
 arg4 = sys.argv[4]	  # the amount of points in the list
 arg5 = sys.argv[5]	  # the output file
 
@@ -180,7 +184,7 @@ with open('CoordsOut.pts', 'w') as outfile:
         # outfile.write('# New slice\n')
             outfile.write(', ')
             counter = 1
-            if (i == len(pointList)):
+            if (i == len(pointList) - 1):
                 i = -1
             i += 1
             # print('written')
@@ -197,7 +201,7 @@ print('Coordinates written')
 def dumpIntensity(daFile, b):
     inte = np.vstack(daFile.intensity)
     counter = 1
-    with file('IntensityAsRGBOut.pts', 'w') as outfile:
+    with open('IntensityAsRGBOut.pts', 'w') as outfile:
         for dat in inte:
             if counter == pointList[i]:
                 # scaled =  str(dat[0]/ 256)
@@ -206,7 +210,7 @@ def dumpIntensity(daFile, b):
                 outfile.write(scaled_rgb+" " + scaled_rgb+" "+scaled_rgb)
                 outfile.write(', ')
                 counter = 1
-                if (i == len(pointList)):
+                if (i == len(pointList) - 1):
                     i = -1
                 i += 1
                 # print('written')
@@ -224,10 +228,10 @@ def dumpIntensity(daFile, b):
 # 16 bit color is 0 - 65536
 # 8 is 256
 
-def dumpColor(daFile, b):
+def dumpColor(daFile):
     colour = np.vstack((daFile.red, daFile.green, daFile.blue)).transpose()
     counter = 1
-    with file('ColorOut.pts', 'w') as outfile:
+    with open('ColorOut.pts', 'w') as outfile:
         for data_slice in colour:
             if counter == pointList[i]:
                 scaled_slice = np.divide(data_slice, 65536.0)
@@ -238,7 +242,7 @@ def dumpColor(daFile, b):
 
                 outfile.write(', ')
                 counter = 1
-                if (i == len(pointList)):
+                if (i == len(pointList) - 1):
                     i = -1
                 i += 1
                 # print('written')
@@ -251,7 +255,7 @@ def dumpColor(daFile, b):
 
 
 if colo == 1:
-    dumpColor(inFile, base)
+    dumpColor(inFile)
 
 
 if usr_dat == 1:

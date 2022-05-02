@@ -3,6 +3,33 @@
 # Nicholas Polys, Virginia Tech
 # October 2017
 #
+# James de Chutkowski, Virginia Tech CS'24
+# April 2022
+
+# Purpose: converts .las files to .x3dv files
+
+# To test this file easily...
+
+# python las2x3d_Intensity.py input.las lowerBound upperBound amount output.x3dv
+
+# RUN IN MOBAXTERM, IDEALLY IN METAGRID2.SV.VT.EDU
+
+# For me, I have to run it in a virtual Python environment
+# The terminal commands are:
+# python3 -m venv .env
+# source .env/bin/activate
+
+# Once script gives an .x3dv output...
+# Have Castle Game Engine installed 
+# Once installed, go to castle_game_engine/bin/view3dscene and open .x3dv file
+# If an error pops up, make sure x3dv is the file extension and
+# in the file make sure at the top it says "#X3D V3.0 utf8" not "#VRML V3.0 utf8" 
+
+# TODO: 
+# 1. Fix the file heading to "#X3D V3.0 utf8" from "#VRML V3.0 utf8" 
+# instead of doing it manually so that Castle Engine can run it.
+# 2. Implement a more sophisticated, sampling method using numpy arrays.
+# 3. Add better comments and remove unnecessary comments
 
 from laspy.file import File
 import numpy as np
@@ -28,7 +55,7 @@ generated_on = str(datetime.datetime.now())
 
 arg1 = sys.argv[1]    # the file name
 arg2 = sys.argv[2]	  # the lower bound for the interval
-arg3 = sys.argv[3]    # the uppper bound for the interval
+arg3 = sys.argv[3]    # the upper bound for the interval
 arg4 = sys.argv[4]	  # the amount of points in the list
 arg5 = sys.argv[5]	  # the output file
 
@@ -142,16 +169,16 @@ np.set_printoptions(threshold=sys.maxsize)
 counter = 1
 # print(counter)
 
-# lower = int(arg2) # if we are using pointListGeneratorUniform
-# upper = int(arg3)
+lower = int(arg2) # if we are using pointListGeneratorUniform
+upper = int(arg3)
 
-mean = int(arg2)   # if we are using pointListGeneratorNormal
-stDev = int(arg3)
+#mean = int(arg2)   # if we are using pointListGeneratorNormal
+#stDev = int(arg3)
 
 
 # This is one method I think would be interesting to test to see if it
 # works with removing those lines
-def pointListGeneratorUniform(lowerBound, upperBound, amount):
+def pointListGenerator(lowerBound, upperBound, amount):
     result = []
     i = 0
     while i <= amount:
@@ -159,18 +186,9 @@ def pointListGeneratorUniform(lowerBound, upperBound, amount):
         i += 1
     return result
 
-
-def pointListGeneratorNormal(mean, stDev, amount):
-    result = np.random.normal(mean, stDev, amount)
-    return result
-
-
 amount = int(arg4)
 
-# pointList = pointListGeneratorUniform(lower, upper, amount)
-
-pointList = pointListGeneratorNormal(mean, stDev, amount)
-print("pointList: " + pointList)
+pointList = pointListGenerator(lower, upper, amount)
 
 with open('CoordsOut.pts', 'w') as outfile:
     i = 0
@@ -182,7 +200,7 @@ with open('CoordsOut.pts', 'w') as outfile:
         # np.savetxt(outfile, data_slice, fmt='%-7.2f')
         if counter == pointList[i]:
             np.savetxt(outfile, data_slice, fmt='%-7.2f')
-            if (i == len(pointList)):
+            if (i == len(pointList)-1):
                 i = 0
             else:
                 i += 1
@@ -207,27 +225,14 @@ def dumpIntensity(daFile):
     i = 0
     with open('IntensityAsRGBOut.pts', 'w') as outfile:
         for dat in inte:
-            # if counter == base:
+            # if counter == base: OLD VERSION
             if counter == pointList[i]:
-                # One solution is to make
-                # base = random number in an interval
-                # + or - some percentage of itself,
-                # but if the intensity points
-                # need to correspond to the color points,
-                # then how do we make sure that the points
-                # add up and aren't Intensity = 49, Color = 56
-                # or something like that?
-                # Or maybe we make a list [45, 50, 55]
-                # and have the two loop through such that
-                # it will take the 45th point, 50th point, 55th point.
-                # Mainly, does it matter if the intensity points
-                # don't align with the color points?
                 # scaled =  str(dat[0]/ 256)
                 # np.savetxt(outfile, scaled)
                 scaled_rgb = str(dat[0]/256)  # /256.0
                 outfile.write(scaled_rgb+" " + scaled_rgb+" "+scaled_rgb)
                 outfile.write(', ')
-                if (i == len(pointList)):
+                if (i == len(pointList)-1):
                     i = 0
                 else:
                     i += 1
@@ -262,7 +267,7 @@ def dumpColor(daFile):
 
                 outfile.write(', ')
                 counter = 1
-                if (i == len(pointList)):
+                if (i == len(pointList)-1):
                     i = -1
                 i += 1
                 # print('written')
@@ -290,7 +295,7 @@ if classo == 1:
 
 # os.system("cat X3D_Frag1.txt CoordsOut.pts X3D_Frag_Color.txt IntensityAsRGBOut.pts X3D_End.txt > "+arg3 )
 
-os.system("cat X3D_Frag1.txt CoordsOut.pts X3D_Frag_Color.txt IntensityAsRGBOut.pts X3D_End.txt > "+arg3)
+os.system("cat X3D_Frag1.txt CoordsOut.pts X3D_Frag_Color.txt IntensityAsRGBOut.pts X3D_End.txt > "+arg5)
 
 
 # file = open ("out_test.x3d","w" )
