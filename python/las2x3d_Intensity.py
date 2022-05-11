@@ -26,10 +26,8 @@
 # in the file make sure at the top it says "#X3D V3.0 utf8" not "#VRML V3.0 utf8" 
 
 # TODO: 
-# 1. Fix the file heading to "#X3D V3.0 utf8" from "#VRML V3.0 utf8" 
-# instead of doing it manually so that Castle Engine can run it.
-# 2. Implement a more sophisticated, sampling method using numpy arrays.
-# 3. Add better comments and remove unnecessary comments
+# 1. Implement a more sophisticated, sampling method using numpy arrays.
+# 2. Add better comments and remove unnecessary comments
 
 from laspy.file import File
 import numpy as np

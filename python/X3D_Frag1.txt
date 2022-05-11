@@ -1,4 +1,4 @@
-#VRML V3.0 utf8 
+#X3D V3.0 utf8
 
 DirectionalLight {} 
 Background {skyColor [1 1 1] groundColor [1 1 1]} 
